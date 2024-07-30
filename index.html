@@ -30,7 +30,7 @@
 </head>
 <body>
 <div id="unity-container" class="unity-desktop">
-  <canvas id="unity-canvas" width="600" height="600" tabindex="1"></canvas>
+  <canvas id="unity-canvas" width=600 height=600 tabindex="1"></canvas>
   <div id="unity-loading-bar">
     <div id="unity-logo"></div>
     <div id="unity-progress-bar-empty">
@@ -51,7 +51,6 @@
   var progressBarFull = document.querySelector("#unity-progress-bar-full");
   var fullscreenButton = document.querySelector("#unity-fullscreen-button");
   var warningBanner = document.querySelector("#unity-warning");
-  var unityInstance = null;
 
   function unityShowBanner(msg, type) {
     function updateBannerVisibility() {
@@ -60,8 +59,9 @@
     var div = document.createElement('div');
     div.innerHTML = msg;
     warningBanner.appendChild(div);
-    div.style = type === 'error' ? 'background: red; padding: 10px;' : 'background: yellow; padding: 10px;';
-    if (type !== 'error') {
+    if (type == 'error') div.style = 'background: red; padding: 10px;';
+    else {
+      if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
       setTimeout(function() {
         warningBanner.removeChild(div);
         updateBannerVisibility();
@@ -103,33 +103,55 @@
   script.onload = () => {
     createUnityInstance(canvas, config, (progress) => {
       progressBarFull.style.width = 100 * progress + "%";
-    }).then((instance) => {
-      unityInstance = instance;
+      console.log(`Loading progress: ${Math.round(100 * progress)}%`);
+    }).then((unityInstance) => {
+      console.log("Unity instance created successfully");
       loadingBar.style.display = "none";
       fullscreenButton.onclick = () => {
         unityInstance.SetFullscreen(1);
       };
-      window.parent.postMessage({ method: 'UnityReady' }, '*');
+
+      window.addEventListener('message', (event) => {
+        console.log('Received message from Unity:', event.data);
+        if (event.data.type === 'dispose') {
+          console.log('Unity is being disposed');
+        }
+      });
+
+      window.sendTextToUnity = function() {
+        if (unityInstance) {
+          unityInstance.SendMessage('TextObject', 'SetText', 'javatest');
+          console.log('Sent message to Unity: SetText');
+        } else {
+          console.error('Unity instance is not available.');
+        }
+      };
+
+      window.setCameraPosition = function() {
+        if (unityInstance) {
+          let xpos = 0; // Replace with actual logic to update xpos
+          unityInstance.SendMessage('Main Camera', 'SetCameraXPosition', xpos.toString());
+          console.log('Sent message to Unity: SetCameraXPosition');
+        } else {
+          console.error('Unity instance is not available.');
+        }
+      };
+
+      window.setCameraRotation = function() {
+        if (unityInstance) {
+          let xrot = 0; // Replace with actual logic to update xrot
+          unityInstance.SendMessage('Main Camera', 'SetCameraRX', xrot.toString());
+          console.log('Sent message to Unity: SetCameraRX');
+        } else {
+          console.error('Unity instance is not available.');
+        }
+      };
     }).catch((message) => {
-      alert(message);
+      console.error("Error initializing Unity:", message);
     });
   };
-  document.body.appendChild(script);
 
-  window.addEventListener('message', function(event) {
-    if (unityInstance) {
-      var data = event.data;
-      if (data.method === 'SendTextToUnity') {
-        unityInstance.SendMessage('TextObject', 'SetText', data.parameter);
-      } else if (data.method === 'SetCameraPosition') {
-        unityInstance.SendMessage('Main Camera', 'SetCameraXPosition', data.parameter);
-      } else if (data.method === 'SetCameraRotation') {
-        unityInstance.SendMessage('Main Camera', 'SetCameraRX', data.parameter);
-      }
-    } else {
-      console.error('Unity instance is not available.');
-    }
-  });
+  document.body.appendChild(script);
 </script>
 </body>
 </html>
