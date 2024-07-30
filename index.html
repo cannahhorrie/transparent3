@@ -29,138 +29,110 @@
   </style>
 </head>
 <body>
-<div id="unity-container" class="unity-desktop">
-  <canvas id="unity-canvas" width=600 height=600 tabindex="1"></canvas>
-  <div id="unity-loading-bar">
-    <div id="unity-logo"></div>
-    <div id="unity-progress-bar-empty">
-      <div id="unity-progress-bar-full"></div>
+  <div id="unity-container" class="unity-desktop">
+    <canvas id="unity-canvas" width=600 height=600 tabindex="1"></canvas>
+    <div id="unity-loading-bar">
+      <div id="unity-logo"></div>
+      <div id="unity-progress-bar-empty">
+        <div id="unity-progress-bar-full"></div>
+      </div>
+    </div>
+    <div id="unity-warning"></div>
+    <div id="unity-footer">
+      <div id="unity-webgl-logo"></div>
+      <div id="unity-fullscreen-button"></div>
+      <div id="unity-build-title">My project</div>
     </div>
   </div>
-  <div id="unity-warning"></div>
-  <div id="unity-footer">
-    <div id="unity-webgl-logo"></div>
-    <div id="unity-fullscreen-button"></div>
-    <div id="unity-build-title">My project</div>
-  </div>
-</div>
-<script>
-  var container = document.querySelector("#unity-container");
-  var canvas = document.querySelector("#unity-canvas");
-  var loadingBar = document.querySelector("#unity-loading-bar");
-  var progressBarFull = document.querySelector("#unity-progress-bar-full");
-  var fullscreenButton = document.querySelector("#unity-fullscreen-button");
-  var warningBanner = document.querySelector("#unity-warning");
+  <script>
+    var container = document.querySelector("#unity-container");
+    var canvas = document.querySelector("#unity-canvas");
+    var loadingBar = document.querySelector("#unity-loading-bar");
+    var progressBarFull = document.querySelector("#unity-progress-bar-full");
+    var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+    var warningBanner = document.querySelector("#unity-warning");
 
-  function unityShowBanner(msg, type) {
-    function updateBannerVisibility() {
-      warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+    function unityShowBanner(msg, type) {
+      function updateBannerVisibility() {
+        warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+      }
+      var div = document.createElement('div');
+      div.innerHTML = msg;
+      warningBanner.appendChild(div);
+      if (type == 'error') div.style = 'background: red; padding: 10px;';
+      else {
+        if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+        setTimeout(function() {
+          warningBanner.removeChild(div);
+          updateBannerVisibility();
+        }, 5000);
+      }
+      updateBannerVisibility();
     }
-    var div = document.createElement('div');
-    div.innerHTML = msg;
-    warningBanner.appendChild(div);
-    if (type === 'error') div.style = 'background: red; padding: 10px;';
-    else {
-      if (type === 'warning') div.style = 'background: yellow; padding: 10px;';
-      setTimeout(function() {
-        warningBanner.removeChild(div);
-        updateBannerVisibility();
-      }, 5000);
+
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/WEBGL3.loader.js";
+    var config = {
+      dataUrl: buildUrl + "/WEBGL3.data",
+      frameworkUrl: buildUrl + "/WEBGL3.framework.js",
+      codeUrl: buildUrl + "/WEBGL3.wasm",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "DefaultCompany",
+      productName: "My project",
+      productVersion: "0.1",
+      showBanner: unityShowBanner,
+      webglContextAttributes: { alpha: true },
+    };
+
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      var meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+      document.getElementsByTagName('head')[0].appendChild(meta);
+      container.className = "unity-mobile";
+      canvas.className = "unity-mobile";
+    } else {
+      canvas.style.width = "600px";
+      canvas.style.height = "600px";
     }
-    updateBannerVisibility();
-  }
 
-  var buildUrl = "Build";
-  var loaderUrl = buildUrl + "/WEBGLTransparent.loader.js";
-  var config = {
-    dataUrl: buildUrl + "/WEBGLTransparent.data",
-    frameworkUrl: buildUrl + "/WEBGLTransparent.framework.js",
-    codeUrl: buildUrl + "/WEBGLTransparent.wasm",
-    streamingAssetsUrl: "StreamingAssets",
-    companyName: "DefaultCompany",
-    productName: "My project",
-    productVersion: "0.1",
-    showBanner: unityShowBanner,
-    webglContextAttributes: { alpha: true },
-  };
+    loadingBar.style.display = "block";
+    var unityInstance;
 
-  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-    var meta = document.createElement('meta');
-    meta.name = 'viewport';
-    meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-    document.getElementsByTagName('head')[0].appendChild(meta);
-    container.className = "unity-mobile";
-    canvas.className = "unity-mobile";
-  } else {
-    canvas.style.width = "600px";
-    canvas.style.height = "600px";
-  }
+    var xpos = 0;
+    function setCameraPosition() {
+      if (unityInstance) {
+        xpos += 0.5;
+        unityInstance.SendMessage('Main Camera', 'SetCameraXPosition', xpos.toString());
+        console.log('Sent message to Unity: SetCameraXPosition');
+      } else {
+        console.error('Unity instance is not available.');
+      }
+    }
 
-  loadingBar.style.display = "block";
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+      createUnityInstance(canvas, config, (progress) => {
+        progressBarFull.style.width = 100 * progress + "%";
+      }).then((instance) => {
+        unityInstance = instance;
+        loadingBar.style.display = "none";
+        fullscreenButton.onclick = () => {
+          unityInstance.SetFullscreen(1);
+        };
 
-  var script = document.createElement("script");
-  script.src = loaderUrl;
-  script.onload = () => {
-    createUnityInstance(canvas, config, (progress) => {
-      progressBarFull.style.width = 100 * progress + "%";
-      console.log(`Loading progress: ${Math.round(100 * progress)}%`);
-    }).then((unityInstance) => {
-      console.log("Unity instance created successfully");
-      loadingBar.style.display = "none";
-      fullscreenButton.onclick = () => {
-        unityInstance.SetFullscreen(1);
-      };
-
-      // Handle messages from the parent page
-      window.addEventListener('message', (event) => {
-        console.log('Received message from webpage:', event.data);
-
-        if (event.data.method === 'SendTextToUnity') {
-          window.sendTextToUnity();
-        } else if (event.data.method === 'SetCameraPosition') {
-          window.setCameraPosition();
-        } else if (event.data.method === 'SetCameraRotation') {
-          window.setCameraRotation();
-        } else if (event.data.method === 'dispose') {
-          console.log('Unity is being disposed');
-        }
+        window.addEventListener('message', (event) => {
+          console.log('Received message from webpage:', event.data);
+          if (event.data.method === 'SetCameraPosition') {
+            setCameraPosition();
+          }
+        });
+      }).catch((message) => {
+        console.error("Error initializing Unity:", message);
       });
-
-      // Define methods to be called from the parent page
-      window.sendTextToUnity = function() {
-        if (unityInstance) {
-          unityInstance.SendMessage('TextObject', 'SetText', 'javatest');
-          console.log('Sent message to Unity: SetText');
-        } else {
-          console.error('Unity instance is not available.');
-        }
-      };
-
-      window.setCameraPosition = function() {
-        if (unityInstance) {
-          let xpos = 0; // Replace with actual logic to update xpos
-          unityInstance.SendMessage('Main Camera', 'SetCameraXPosition', xpos.toString());
-          console.log('Sent message to Unity: SetCameraXPosition');
-        } else {
-          console.error('Unity instance is not available.');
-        }
-      };
-
-      window.setCameraRotation = function() {
-        if (unityInstance) {
-          let xrot = 0; // Replace with actual logic to update xrot
-          unityInstance.SendMessage('Main Camera', 'SetCameraRX', xrot.toString());
-          console.log('Sent message to Unity: SetCameraRX');
-        } else {
-          console.error('Unity instance is not available.');
-        }
-      };
-    }).catch((message) => {
-      console.error("Error initializing Unity:", message);
-    });
-  };
-
-  document.body.appendChild(script);
-</script>
+    };
+    document.body.appendChild(script);
+  </script>
 </body>
 </html>
