@@ -9,8 +9,8 @@
   <style>
     body, html {
       margin: 0;
-      overflow: hidden; /* Prevents scrollbars */
-      background-color: transparent; /* Ensure background is transparent */
+      overflow: hidden;
+      background-color: transparent;
     }
     #unity-container {
       position: absolute;
@@ -21,16 +21,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: transparent; /* Container should also be transparent */
+      background-color: transparent;
     }
     #unity-canvas {
-      background-color: transparent; /* Make the canvas itself transparent */
+      background-color: transparent;
     }
   </style>
 </head>
 <body>
 <div id="unity-container" class="unity-desktop">
-  <canvas id="unity-canvas" width=600 height=600 tabindex="1"></canvas>
+  <canvas id="unity-canvas" width="600" height="600" tabindex="1"></canvas>
   <div id="unity-loading-bar">
     <div id="unity-logo"></div>
     <div id="unity-progress-bar-empty">
@@ -51,6 +51,7 @@
   var progressBarFull = document.querySelector("#unity-progress-bar-full");
   var fullscreenButton = document.querySelector("#unity-fullscreen-button");
   var warningBanner = document.querySelector("#unity-warning");
+  var unityInstance = null;
 
   function unityShowBanner(msg, type) {
     function updateBannerVisibility() {
@@ -59,9 +60,8 @@
     var div = document.createElement('div');
     div.innerHTML = msg;
     warningBanner.appendChild(div);
-    if (type == 'error') div.style = 'background: red; padding: 10px;';
-    else {
-      if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+    div.style = type === 'error' ? 'background: red; padding: 10px;' : 'background: yellow; padding: 10px;';
+    if (type !== 'error') {
       setTimeout(function() {
         warningBanner.removeChild(div);
         updateBannerVisibility();
@@ -81,7 +81,7 @@
     productName: "My project",
     productVersion: "0.1",
     showBanner: unityShowBanner,
-    webglContextAttributes: { alpha: true }, // Enables transparency in WebGL
+    webglContextAttributes: { alpha: true },
   };
 
   if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
@@ -103,29 +103,31 @@
   script.onload = () => {
     createUnityInstance(canvas, config, (progress) => {
       progressBarFull.style.width = 100 * progress + "%";
-    }).then((unityInstance) => {
+    }).then((instance) => {
+      unityInstance = instance;
       loadingBar.style.display = "none";
       fullscreenButton.onclick = () => {
         unityInstance.SetFullscreen(1);
       };
-      //window.parent.postMessage({ method: 'UnityReady' }, '*');
+      window.parent.postMessage({ method: 'UnityReady' }, '*');
     }).catch((message) => {
       alert(message);
     });
   };
-
   document.body.appendChild(script);
 
-
-  // Listen for messages from the parent
   window.addEventListener('message', function(event) {
-    var data = event.data;
-    if (data.method === 'SendTextToUnity') {
-      sendTextToUnity();
-    } else if (data.method === 'SetCameraPosition') {
-      setCameraPosition();
-    } else if (data.method === 'SetCameraRotation') {
-      setCameraRotation();
+    if (unityInstance) {
+      var data = event.data;
+      if (data.method === 'SendTextToUnity') {
+        unityInstance.SendMessage('TextObject', 'SetText', data.parameter);
+      } else if (data.method === 'SetCameraPosition') {
+        unityInstance.SendMessage('Main Camera', 'SetCameraXPosition', data.parameter);
+      } else if (data.method === 'SetCameraRotation') {
+        unityInstance.SendMessage('Main Camera', 'SetCameraRX', data.parameter);
+      }
+    } else {
+      console.error('Unity instance is not available.');
     }
   });
 </script>
