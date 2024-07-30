@@ -24,6 +24,7 @@
   </div>
 </div>
 <script>
+
   var container = document.querySelector("#unity-container");
   var canvas = document.querySelector("#unity-canvas");
   var loadingBar = document.querySelector("#unity-loading-bar");
@@ -31,6 +32,12 @@
   var fullscreenButton = document.querySelector("#unity-fullscreen-button");
   var warningBanner = document.querySelector("#unity-warning");
 
+  // Shows a temporary message banner/ribbon for a few seconds, or
+  // a permanent error message on top of the canvas if type=='error'.
+  // If type=='warning', a yellow highlight color is used.
+  // Modify or remove this function to customize the visually presented
+  // way that non-critical warnings and error messages are presented to the
+  // user.
   function unityShowBanner(msg, type) {
     function updateBannerVisibility() {
       warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
@@ -62,14 +69,31 @@
     showBanner: unityShowBanner,
   };
 
+  // By default, Unity keeps WebGL canvas render target size matched with
+  // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+  // Set this to false if you want to decouple this synchronization from
+  // happening inside the engine, and you would instead like to size up
+  // the canvas DOM size and WebGL render target sizes yourself.
+  // config.matchWebGLToCanvasSize = false;
+
   if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+    // Mobile device style: fill the whole browser client area with the game canvas:
+
     var meta = document.createElement('meta');
     meta.name = 'viewport';
     meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
     document.getElementsByTagName('head')[0].appendChild(meta);
     container.className = "unity-mobile";
     canvas.className = "unity-mobile";
+
+    // To lower canvas resolution on mobile devices to gain some
+    // performance, uncomment the following line:
+    // config.devicePixelRatio = 1;
+
+
   } else {
+    // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
+
     canvas.style.width = "600px";
     canvas.style.height = "600px";
     canvas.background = "transparent";
@@ -78,6 +102,7 @@
   loadingBar.style.display = "block";
   var unityInstance;
 
+  // Function to send a message to Unity
   function sendTextToUnity() {
     if (unityInstance) {
       unityInstance.SendMessage('TextObject', 'SetText', 'javatest');
@@ -90,8 +115,8 @@
 
   function setCameraPosition() {
     if (unityInstance) {
-      xpos += .5;
-      unityInstance.SendMessage('Main Camera', 'SetCameraXPosition', xpos.toString());
+      xpos += .5; // Increment the x position by 1
+      unityInstance.SendMessage('Main Camera', 'SetCameraXPosition', xpos.toString()); // Send the updated position to Unity
     } else {
       console.error('Unity instance is not available.');
     }
@@ -100,8 +125,8 @@
   var xrot = 0;
   function setCameraRotation() {
     if (unityInstance) {
-      xrot += .5;
-      unityInstance.SendMessage('Main Camera', 'SetCameraRX', xrot.toString());
+      xrot += .5; // Increment the x position by 1
+      unityInstance.SendMessage('Main Camera', 'SetCameraRX', xrot.toString()); // Send the updated position to Unity
     } else {
       console.error('Unity instance is not available.');
     }
@@ -113,32 +138,25 @@
     createUnityInstance(document.querySelector("#unity-canvas"), config, (progress) => {
       document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
     }).then((instance) => {
-      unityInstance = instance;
+      unityInstance = instance; // Store the Unity instance
       document.querySelector("#unity-loading-bar").style.display = "none";
       document.querySelector("#unity-fullscreen-button").onclick = () => {
         unityInstance.SetFullscreen(1);
       };
 
-      // Notify that Unity is ready
-      window.parent.postMessage({ method: 'UnityReady' }, '*');
+      // Call the function to update text after Unity has loaded
+      // sendTextToUnity('javascript text test');
+      //setCameraPosition('2')
     }).catch((message) => {
       alert(message);
     });
   };
   document.body.appendChild(script);
 
-  // Listen for messages from the parent
-  window.addEventListener('message', function(event) {
-    console.log('Received message from parent:', event.data); // Log received messages
-    var data = event.data;
-    if (data.method === 'SendTextToUnity') {
-      sendTextToUnity();
-    } else if (data.method === 'SetCameraPosition') {
-      setCameraPosition();
-    } else if (data.method === 'SetCameraRotation') {
-      setCameraRotation();
-    }
-  });
 </script>
 </body>
-</html>
+<button onclick='sendTextToUnity()'>text</button>
+<button onclick='setCameraPosition()'>Move Camera</button>
+<button onclick='setCameraRotation()'>Rotate Camera</button>
+
+</html> 
